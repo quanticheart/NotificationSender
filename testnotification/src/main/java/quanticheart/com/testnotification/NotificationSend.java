@@ -1,4 +1,4 @@
-package quanticheart.com.notificationsender;
+package quanticheart.com.testnotification;
 
 import android.app.NotificationChannel;
 import android.app.NotificationChannelGroup;
@@ -6,12 +6,16 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.media.AudioAttributes;
 import android.os.Build;
 import android.support.v4.app.NotificationCompat;
+import android.util.Log;
+
 import java.util.Random;
 
 /*
@@ -38,10 +42,19 @@ public class NotificationSend {
     //==============================================================================================
 
     /**
-     * @param context     - init
+     * @param context - init
      */
-    public static void sendNotification(Context context) {
-        showNotification(createNotificationManager(context), createNotificationBuilder(context, "Teste", "Click para abrir o app!!"));
+    public static void sendNotification(Context context, String title, String mensagem, String anotherAppPackageManifest) {
+        Intent intent = createIntentFromAotherAPP(context, anotherAppPackageManifest);
+        if (intent != null)
+            showNotification(createNotificationManager(context), createNotificationBuilder(context, title, mensagem, intent));
+    }
+
+    /**
+     * @param context - init
+     */
+    public static void sendNotification(Context context, String title, String mensagem, Intent intent) {
+        showNotification(createNotificationManager(context), createNotificationBuilder(context, title, mensagem, intent));
     }
 
     //==============================================================================================
@@ -70,13 +83,13 @@ public class NotificationSend {
      * @param messageBody - msg notification
      * @return new notification
      */
-    private static android.app.Notification createNotificationBuilder(Context context, String Title, String messageBody) {
+    private static android.app.Notification createNotificationBuilder(Context context, String Title, String messageBody, Intent intentAnotherApp) {
 
         NotificationCompat.WearableExtender wearableExtender =
                 new NotificationCompat.WearableExtender().setHintHideIcon(true);
 
         NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(context)
-//                .setLargeIcon(getLargeIcon(context))
+                .setLargeIcon(getLargeIcon(context))
                 .setSmallIcon(getIcon(context))
                 .setColor(getColor())
                 .setContentTitle(Title)
@@ -86,7 +99,7 @@ public class NotificationSend {
 //                .setSound(getSound(context))
                 .setVibrate(getVibration())
                 .setChannelId(getChannelID(context))
-                .setContentIntent(getPendingIntent(context))
+                .setContentIntent(getPendingIntent(context, intentAnotherApp))
                 .extend(wearableExtender);
 
         return notificationBuilder.build();
@@ -230,15 +243,15 @@ public class NotificationSend {
     }
 
     private static Bitmap getLargeIcon(Context context) {
-        return BitmapFactory.decodeResource(context.getResources(), R.mipmap.ic_launcher);
+        return BitmapFactory.decodeResource(context.getResources(), R.drawable.ic_notification_logo);
     }
 
     private static int getIcon(Context context) {
-        return R.mipmap.ic_launcher;
+        return R.drawable.ic_notification;
     }
 
-    private static PendingIntent getPendingIntent(Context context) {
-        Intent intent = new Intent(context, MainActivity.class);
+    private static PendingIntent getPendingIntent(Context context, Intent intentAnotherApp) {
+        Intent intent = intentAnotherApp;
         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
         return PendingIntent.getActivity(context, 0, intent, PendingIntent.FLAG_ONE_SHOT);
     }
@@ -264,4 +277,32 @@ public class NotificationSend {
                 .bigText(mMessage);
     }
 
+    //==============================================================================================
+    //
+    // ** Get Packarge from another app
+    //
+    //==============================================================================================
+
+    public static Intent createIntentFromAotherAPP(Context context, String anotherAppPackageManifest) {
+        PackageManager pm = context.getPackageManager();
+        Intent LaunchIntent = null;
+        String apppack = anotherAppPackageManifest;
+        String name = "";
+        try {
+            if (pm != null) {
+                ApplicationInfo app = context.getPackageManager().getApplicationInfo(apppack, 0);
+                name = (String) pm.getApplicationLabel(app);
+                LaunchIntent = pm.getLaunchIntentForPackage(apppack);
+//                LaunchIntent.setAction("teste");
+//                LaunchIntent.putExtra("ll", "testes notification 2");
+            }
+
+            Log.e("Found it:", name);
+
+        } catch (PackageManager.NameNotFoundException e) {
+            e.printStackTrace();
+        }
+
+        return LaunchIntent;
+    }
 }
